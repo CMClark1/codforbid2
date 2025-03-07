@@ -1,14 +1,19 @@
 Package: codforbid2
-Title: What the Package Does (One Line, Title Case)
+Title: Georges Bank Cod Discard Calculation
 Version: 0.0.0.9000
 Authors@R: 
     person("Caira", "Clark", , "caira.clark@dfo-mpo.gc.ca", role = c("aut", "cre"),
            comment = c(ORCID = "0000-1111-2222-3333"))
-Description: What the package does (one paragraph).
-License: `use_mit_license()`, `use_gpl3_license()` or friends to pick a
-    license
+Description: Functions to replicate the cod discard calculation for Georges Bank, according to the method from Gavaris et al. (2007).
+License: MIT + file LICENSE
 Encoding: UTF-8
 Roxygen: list(markdown = TRUE)
 RoxygenNote: 7.3.2
 URL: https://github.com/CMClark1/codforbid2
 BugReports: https://github.com/CMClark1/codforbid2/issues
+Imports: 
+    DBI,
+    dplyr,
+    janitor,
+    ROracle,
+    tidyr
