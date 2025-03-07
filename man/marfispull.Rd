@@ -27,5 +27,7 @@ a data.frame of landings
 Pull landings data for the groundfish fleet from DFO's Maritime Fishery Information System (MARFIS) database.
 }
 \examples{
-\dontrun{example <- marfispull(year=2024)}
+\dontrun{
+example <- marfispull(year = 2024)
+}
 }
