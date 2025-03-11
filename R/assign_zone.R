@@ -8,8 +8,9 @@
 #' @param dir Directory with locally stored data, which can be generated with the function localcopies.R. Default is "C:/LocalDataDump/Fleets"
 #' @param extract Choose whether or not to force extract all local copies of required MARFIS and ISDB tables (T/F). Default is "F", which extracts only missing tables and does not update existing ones.
 #' @return a list of two dataframes: one with an additional column for Zone, with all Zones assigned; another with an additional column for Zone, with no Zones assigned.
-#' @examples
+#' @examples \dontrun{
 #' example1 <- assign_zone(marfis)
+#' }
 #' @export
 
 assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = "lat", lon.field = "lon", dir = "C:/LocalDataDump/Fleets", extract = "F") {
@@ -65,7 +66,7 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
 
   if('881'%in%unobserved$sector | '885'%in%unobserved$sector | '311'%in%unobserved$sector){
 
-    library(Mar.fleets)
+    requireNamespace("Mar.fleets")
     mobile_5Z <- Mar.fleets::fishin_CHPs(type="MOBILE", stock = "5Z", dateStart = "2024-01-01", dateEnd= "2024-12-31", useLocal = T, data.dir='C:/LocalDataDump/Fleets', socks=T, usepkg = "roracle")
     mobileVMSRaw <- Mar.utils::VMS_from_MARFIS(df=mobile_5Z$marf$MARF_TRIPS, VR_field = "VR_NUMBER_FISHING", usepkg = "roracle", make_segments = F, LANDED_field = "T_DATE2" )
     mobileVMSRaw <- mobileVMSRaw[["marf_VMS"]]
@@ -74,7 +75,7 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
 
   if ('90'%in%unobserved$sector | '89'%in%unobserved$sector | '884'%in%unobserved$sector | '886'%in%unobserved$sector){
 
-    library(Mar.fleets)
+    requireNamespace("Mar.fleets")
     fixed_5Z <- Mar.fleets::fishin_CHPs(type="FIXED", stock = "5Z", dateStart = "2024-01-01", dateEnd= "2024-12-31", useLocal = T, data.dir='C:/LocalDataDump/Fleets', socks=T, usepkg = "roracle")
     fixedVMSRaw <- Mar.utils::VMS_from_MARFIS(df=fixed_5Z$marf$MARF_TRIPS, VR_field = "VR_NUMBER_FISHING", usepkg = "roracle", make_segments = F, LANDED_field = "T_DATE2" ) #Depending on the license conditions, there may only be VMS data for unobserved trips of mobile gear
     fixedVMSRaw <- fixedVMSRaw[["marf_VMS"]]
@@ -135,6 +136,8 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
     dplyr::mutate(comment = "no zone")
 
   df.list <- list(marfis, noZone)
+
+  Id <- date_fished <- landed_date <- lat <- lat.x <- latitude <- log_efrt_std_info_id <- lon <- lon.x <- lon.y <- longitude <- meanlat <- meanlon <- oracle.dsn <- oracle.password <- oracle.username <- position_utc_date <- setNames <- trip <- vr_number <- year <- zone <- NULL
 
   print(df.list)
 
