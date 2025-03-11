@@ -15,5 +15,9 @@ Imports:
     DBI,
     dplyr,
     janitor,
+    lubridate,
+    Mar.data,
+    Mar.fleets,
+    Mar.utils,
     ROracle,
     tidyr
