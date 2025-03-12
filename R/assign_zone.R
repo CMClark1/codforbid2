@@ -14,22 +14,21 @@
 #' @export
 
 assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = "lat", lon.field = "lon", dir = "C:/LocalDataDump/Fleets", extract = "F") {
-
-  #This confirms that the necessary files are there and downloads the files that aren't
-  if(extract=="F"){
-    Mar.fleets::enable_local(data.dir = "C:/LocalDataDump/Fleets", oracle.username=oracle.username, oracle.password=oracle.password, oracle.dsn=oracle.dsn, usepkg="roracle")
-  }else if(extract=="T"){
-    Mar.fleets::enable_local(data.dir = "C:/LocalDataDump/Fleets", usepkg = 'roracle', force.extract = T, oracle.username = oracle.username, oracle.password = oracle.password, oracle.dsn = oracle.dsn)
+  # This confirms that the necessary files are there and downloads the files that aren't
+  if (extract == "F") {
+    Mar.fleets::enable_local(data.dir = "C:/LocalDataDump/Fleets", oracle.username = oracle.username, oracle.password = oracle.password, oracle.dsn = oracle.dsn, usepkg = "roracle")
+  } else if (extract == "T") {
+    Mar.fleets::enable_local(data.dir = "C:/LocalDataDump/Fleets", usepkg = "roracle", force.extract = T, oracle.username = oracle.username, oracle.password = oracle.password, oracle.dsn = oracle.dsn)
   } else {
     print("Assign T or F to 'extract' parameter")
     stop()
   }
 
-  #Assign zone using shapefile of Georges Bank discard zones
+  # Assign zone using shapefile of Georges Bank discard zones
   marfis.df1 <- Mar.utils::identify_area(df = marfis.df |> as.data.frame(), lat.field = lat.field, lon.field = lon.field, agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id") |>
-    dplyr::rename(zone=Id)
+    dplyr::rename(zone = Id)
 
-### Correct zone if missing or 0-------------------
+  ### Correct zone if missing or 0-------------------
 
   ## Create two dataframes, one that is correct and one that needs corrections
   zone_correct <- marfis.df1 |>
@@ -41,59 +40,45 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
   observed <- zone_corrections |>
     dplyr::filter(!is.na(trip)) |>
     dplyr::left_join(isdb.df |>
-    dplyr::select(trip,lat,lon), by = "trip") |>
-    dplyr::mutate(lon.y=lon.y*-1)
+      dplyr::select(trip, lat, lon), by = "trip") |>
+    dplyr::mutate(lon.y = lon.y * -1)
 
-  ##Try the lat lons from the ISDB instead of MARFIS
+  ## Try the lat lons from the ISDB instead of MARFIS
 
   if (nrow(observed) > 1) {
-
-    observed <- Mar.utils::identify_area(df = observed |>  as.data.frame(), lat.field = "lat.y", lon.field = "lon.y", agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id") |>
+    observed <- Mar.utils::identify_area(df = observed |> as.data.frame(), lat.field = "lat.y", lon.field = "lon.y", agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id") |>
       select(-zone) |>
-      dplyr::rename(zone=Id,lat=lat.x,lon=lon.x)
-
+      dplyr::rename(zone = Id, lat = lat.x, lon = lon.x)
   } else {
-
     observed <- observed
-
   }
 
   ## Correct unobserved trips with missing zones
 
   unobserved <- zone_corrections |>
-    dplyr::filter(!log_efrt_std_info_id%in%observed$log_efrt_std_info_id) |>
+    dplyr::filter(!log_efrt_std_info_id %in% observed$log_efrt_std_info_id) |>
     dplyr::mutate(landed_date = lubridate::as_date(landed_date), date_fished = lubridate::dmy(date_fished))
 
-  if('881'%in%unobserved$sector | '885'%in%unobserved$sector | '311'%in%unobserved$sector){
-
+  if ("881" %in% unobserved$sector | "885" %in% unobserved$sector | "311" %in% unobserved$sector) {
     requireNamespace("Mar.fleets")
-    mobile_5Z <- Mar.fleets::fishin_CHPs(type="MOBILE", stock = "5Z", dateStart = "2024-01-01", dateEnd= "2024-12-31", useLocal = T, data.dir='C:/LocalDataDump/Fleets', socks=T, usepkg = "roracle")
-    mobileVMSRaw <- Mar.utils::VMS_from_MARFIS(df=mobile_5Z$marf$MARF_TRIPS, VR_field = "VR_NUMBER_FISHING", usepkg = "roracle", make_segments = F, LANDED_field = "T_DATE2" )
+    mobile_5Z <- Mar.fleets::fishin_CHPs(type = "MOBILE", stock = "5Z", dateStart = "2024-01-01", dateEnd = "2024-12-31", useLocal = T, data.dir = "C:/LocalDataDump/Fleets", socks = T, usepkg = "roracle")
+    mobileVMSRaw <- Mar.utils::VMS_from_MARFIS(df = mobile_5Z$marf$MARF_TRIPS, VR_field = "VR_NUMBER_FISHING", usepkg = "roracle", make_segments = F, LANDED_field = "T_DATE2")
     mobileVMSRaw <- mobileVMSRaw[["marf_VMS"]]
-
   }
 
-  if ('90'%in%unobserved$sector | '89'%in%unobserved$sector | '884'%in%unobserved$sector | '886'%in%unobserved$sector){
-
+  if ("90" %in% unobserved$sector | "89" %in% unobserved$sector | "884" %in% unobserved$sector | "886" %in% unobserved$sector) {
     requireNamespace("Mar.fleets")
-    fixed_5Z <- Mar.fleets::fishin_CHPs(type="FIXED", stock = "5Z", dateStart = "2024-01-01", dateEnd= "2024-12-31", useLocal = T, data.dir='C:/LocalDataDump/Fleets', socks=T, usepkg = "roracle")
-    fixedVMSRaw <- Mar.utils::VMS_from_MARFIS(df=fixed_5Z$marf$MARF_TRIPS, VR_field = "VR_NUMBER_FISHING", usepkg = "roracle", make_segments = F, LANDED_field = "T_DATE2" ) #Depending on the license conditions, there may only be VMS data for unobserved trips of mobile gear
+    fixed_5Z <- Mar.fleets::fishin_CHPs(type = "FIXED", stock = "5Z", dateStart = "2024-01-01", dateEnd = "2024-12-31", useLocal = T, data.dir = "C:/LocalDataDump/Fleets", socks = T, usepkg = "roracle")
+    fixedVMSRaw <- Mar.utils::VMS_from_MARFIS(df = fixed_5Z$marf$MARF_TRIPS, VR_field = "VR_NUMBER_FISHING", usepkg = "roracle", make_segments = F, LANDED_field = "T_DATE2") # Depending on the license conditions, there may only be VMS data for unobserved trips of mobile gear
     fixedVMSRaw <- fixedVMSRaw[["marf_VMS"]]
-
   }
 
-  if (exists('mobileVMSRaw')==TRUE & exists('fixedVMSRaw')==TRUE){
-
-    chpVMS <- rbind(mobileVMSRaw,fixedVMSRaw)
-
-  } else if (exists('mobileVMSRaw')==TRUE & exists('fixedVMSRaw')==FALSE){
-
+  if (exists("mobileVMSRaw") == TRUE & exists("fixedVMSRaw") == TRUE) {
+    chpVMS <- rbind(mobileVMSRaw, fixedVMSRaw)
+  } else if (exists("mobileVMSRaw") == TRUE & exists("fixedVMSRaw") == FALSE) {
     chpVMS <- mobileVMSRaw
-
-  } else if (exists('mobileVMSRaw')==FALSE & exists('fixedVMSRaw')==TRUE){
-
+  } else if (exists("mobileVMSRaw") == FALSE & exists("fixedVMSRaw") == TRUE) {
     chpVMS <- fixedVMSRaw
-
   }
 
 
@@ -106,23 +91,22 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
   # Assign zones to VMS data and remove points outside of zones (assumed to be transiting)
   chpVMS_filter <- Mar.utils::identify_area(
     df = chpVMS_filter, lat.field = "latitude", lon.field = "longitude",
-    agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id")
-  chpVMS_filter <- subset(chpVMS_filter,Id>0)
+    agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id"
+  )
+  chpVMS_filter <- subset(chpVMS_filter, Id > 0)
   chpVMS_filter <- chpVMS_filter |>
-    dplyr::group_by(vr_number,date) |>
+    dplyr::group_by(vr_number, date) |>
     dplyr::summarize(meanlat = mean(latitude, na.rm = TRUE), meanlon = mean(longitude, na.rm = TRUE)) # Available VMS data for unobserved trips
 
   if (nrow(unobserved) > 1) {
-
     unobserved <- dplyr::left_join(unobserved, as.data.frame(chpVMS_filter), by = (c("vr_number_fishing" = "vr_number", "date_fished" = "date")))
     unobserved <- Mar.utils::identify_area(
       df = unobserved, lat.field = "meanlat", lon.field = "meanlon",
-      agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id") |>
-      dplyr::mutate(zone=Id, lon=meanlat, lat=meanlon) |>
+      agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id"
+    ) |>
+      dplyr::mutate(zone = Id, lon = meanlat, lat = meanlon) |>
       dplyr::select(-meanlat, -meanlon)
-
   } else {
-
     unobserved <- unobserved
   }
 
@@ -130,7 +114,7 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
 
   temp <- rbind(zone_correct, setNames(observed |> dplyr::select(c(1:23)), names(zone_correct)), setNames(unobserved |> dplyr::select(1:23), names(zone_correct)))
 
-  marfis <- temp |>  dplyr::filter(zone >= 1)
+  marfis <- temp |> dplyr::filter(zone >= 1)
   noZone <- temp |>
     dplyr::filter(!zone >= 1) |>
     dplyr::mutate(comment = "no zone")
@@ -140,5 +124,4 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
   Id <- date_fished <- landed_date <- lat <- lat.x <- latitude <- log_efrt_std_info_id <- lon <- lon.x <- lon.y <- longitude <- meanlat <- meanlon <- oracle.dsn <- oracle.password <- oracle.username <- position_utc_date <- setNames <- trip <- vr_number <- year <- zone <- NULL
 
   print(df.list)
-
 }
