@@ -20,4 +20,5 @@ Imports:
     Mar.fleets,
     Mar.utils,
     ROracle,
+    tibble,
     tidyr
