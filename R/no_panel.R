@@ -12,7 +12,7 @@
 #'@export
 
 
-nopanel <- function(marfis.df=NULL, username=oracle.username,password=oracle.password,dsn=oracle.dsn, y=year) {
+no_panel <- function(marfis.df=NULL, username=oracle.username,password=oracle.password,dsn=oracle.dsn, y=year) {
 
   channel <- ROracle::dbConnect(DBI::dbDriver("Oracle"), username=username, password=password, dsn)
 
