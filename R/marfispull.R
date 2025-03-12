@@ -63,9 +63,11 @@ where a.vr_number_fishing=b.vr_number
   marfis <- marfis1 |>
     dplyr::left_join(obs_trip) |>
     dplyr::summarise(SumOfRND_WEIGHT_KGS = sum(RND_WEIGHT_KGS), .by = c(-MON_DOC_ID, -COLUMN_DEFN_ID, -RND_WEIGHT_KGS)) |>
-    dplyr::mutate(SPECIES_CODE=dplyr::case_when(SPECIES_CODE==100~"cod",
-                                         SPECIES_CODE==110~"had",
-                                         SPECIES_CODE==170~"pol")) |>
+    dplyr::mutate(SPECIES_CODE = dplyr::case_when(
+      SPECIES_CODE == 100 ~ "cod",
+      SPECIES_CODE == 110 ~ "had",
+      SPECIES_CODE == 170 ~ "pol"
+    )) |>
     tidyr::pivot_wider(names_from = SPECIES_CODE, values_from = SumOfRND_WEIGHT_KGS) |>
     janitor::clean_names()
 
