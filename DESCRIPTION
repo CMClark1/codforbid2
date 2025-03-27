@@ -14,11 +14,14 @@ BugReports: https://github.com/CMClark1/codforbid2/issues
 Imports: 
     DBI,
     dplyr,
+    fuzzyjoin,
+    here,
     janitor,
     lubridate,
     Mar.data,
     Mar.fleets,
     Mar.utils,
+    openxlsx,
     ROracle,
     tibble,
     tidyr
