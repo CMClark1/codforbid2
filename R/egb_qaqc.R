@@ -1,7 +1,7 @@
 #' @title egb_qaqc
 #' @description A function to QAQC MARFIS data using the ISDB database.
-#' @param marfis.df The name of the MARFIS dataframe previously pulled using the marfispull function. Default is "marfis"
-#' @param isdb.df The name of the ISDB dataframe previously pulled using the isdbpull function. Default is "isdb"
+#' @param marfis.df The name of the MARFIS dataframe previously pulled using the marfispull function.
+#' @param isdb.df The name of the ISDB dataframe previously pulled using the isdbpull function.
 #' @param directory Directory where output files will be saved. Default is the working directory.
 #' @param savedoutput Specify whether or not you could like the output files saved in the working directory for review or action (see below for the descriptions of these files). Default is "T" (true).
 #' @returns Returns a data frame of QAQC's data ready for further cleaning, and five Excel or .csv files for review or action: Discards_ISDB_check to send to the observer companies, Discards_MARFIS_missing to send to CDD, an observer coverage summary (Discards_ObsCoverageSummary), removed records (Discards_RemovedRecords), aggregated data (Discards_MARFISXtab_Aggregated) and data for grouping (Discards_DataforGrouping).
@@ -10,7 +10,7 @@
 #' }
 #' @export
 
-egb_qaqc <- function(year = as.numeric(marfis.df=marfis, isdb.df=isdb, savedoutput = "T", directory = getwd())) {
+egb_qaqc <- function(marfis.df=NULL, isdb.df=NULL, savedoutput = "T", directory = getwd()) {
 
   #Create a dataframes of records that match and do not match based on only VR_NUMBER_FISHING and LANDED_DATE
   temp <- marfis.df |>
@@ -117,12 +117,12 @@ egb_qaqc <- function(year = as.numeric(marfis.df=marfis, isdb.df=isdb, savedoutp
 
 
   if (savedoutput == "T") {
-    write.csv(marfis_errors_missing, here("data/Discards_MARFIS_missing.csv")) #file sent to cdd to correct missing marfis trip numbers
-    write.csv(marfis_errors_incorrect, here("data/Discards_MARFIS_incorrect.csv")) #File sent to CDD to correct MARFIS trip numbers that don't match ISDB, after the observer program confirms theirs are correct (in isdb_check)
-    write.csv(isdb_check, here("data/Discards_ISDB_check.csv")) #File sent to observer program to check if VRN, date landed, and trip number are correct. If they are correct in the ISDB, then they are wrong in MARFIS.
-    write.csv(isdb_errors, here("data/Discards_ISDB_missing.csv")) #File sent to observer program as outstanding data not yet entered
+    write.csv(marfis_errors_missing, here::here("data/Discards_MARFIS_missing.csv")) #file sent to cdd to correct missing marfis trip numbers
+    write.csv(marfis_errors_incorrect, here::here("data/Discards_MARFIS_incorrect.csv")) #File sent to CDD to correct MARFIS trip numbers that don't match ISDB, after the observer program confirms theirs are correct (in isdb_check)
+    write.csv(isdb_check, here::here("data/Discards_ISDB_check.csv")) #File sent to observer program to check if VRN, date landed, and trip number are correct. If they are correct in the ISDB, then they are wrong in MARFIS.
+    write.csv(isdb_errors, here::here("data/Discards_ISDB_missing.csv")) #File sent to observer program as outstanding data not yet entered
   }
 
-  return(marfis_qaqc)
+  print(marfis_qaqc)
 
 }
