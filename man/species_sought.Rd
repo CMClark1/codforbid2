@@ -31,6 +31,6 @@ Remove trips that sought species other than haddock, and then remove
 }
 \examples{
 \dontrun{
-example <- species_sought(marfis.df=data)
+example <- species_sought(marfis.df = data)
 }
 }
