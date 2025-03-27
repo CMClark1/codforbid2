@@ -38,6 +38,7 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
 
   ## Correct observed trips with missing zones
   observed <- zone_corrections |>
+    dplyr::rename(trip=trip.marfis) |>
     dplyr::filter(!is.na(trip)) |>
     dplyr::left_join(isdb.df |>
       dplyr::select(trip, lat, lon), by = "trip") |>
@@ -53,11 +54,13 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
     observed <- observed
   }
 
-  ## Correct unobserved trips with missing zones
+  ## Correct unobserved trips with missing zones or observed trips that are still outside known areas
 
   unobserved <- zone_corrections |>
     dplyr::filter(!log_efrt_std_info_id %in% observed$log_efrt_std_info_id) |>
     dplyr::mutate(landed_date = lubridate::as_date(landed_date), date_fished = lubridate::dmy(date_fished))
+
+  observed_stillmissing <- observed |> dplyr::filter(!zone>0)
 
   if ("881" %in% unobserved$sector | "885" %in% unobserved$sector | "311" %in% unobserved$sector) {
     requireNamespace("Mar.fleets")
@@ -82,6 +85,8 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
   }
 
 
+  #For unobserved data
+
   # Filter existing VMS data using VR_NUMBER and LANDED_DATE from unobserved trips missing zone numbers
   chpVMS_filter <- chpVMS |>
     janitor::clean_names() |>
@@ -98,7 +103,7 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
     dplyr::group_by(vr_number, date) |>
     dplyr::summarize(meanlat = mean(latitude, na.rm = TRUE), meanlon = mean(longitude, na.rm = TRUE)) # Available VMS data for unobserved trips
 
-  if (nrow(unobserved) > 1) {
+  if (nrow(unobserved) > 0) {
     unobserved <- dplyr::left_join(unobserved, as.data.frame(chpVMS_filter), by = (c("vr_number_fishing" = "vr_number", "date_fished" = "date")))
     unobserved <- Mar.utils::identify_area(
       df = unobserved, lat.field = "meanlat", lon.field = "meanlon",
@@ -110,9 +115,45 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
     unobserved <- unobserved
   }
 
+  #For still missing observed data
+
+
+  # Filter existing VMS data using VR_NUMBER and LANDED_DATE from observed trips still missing zone numbers
+  chpVMS_filter <- chpVMS |>
+    janitor::clean_names() |>
+    dplyr::mutate(date = as.Date(position_utc_date, format = "%Y/%m/%d")) |>
+    dplyr::filter(vr_number %in% observed_stillmissing$vr_number_fishing & date %in% lubridate::dmy(observed_stillmissing$date_fished))
+
+  # Assign zones to VMS data and remove points outside of zones (assumed to be transiting)
+  chpVMS_filter <- Mar.utils::identify_area(
+    df = chpVMS_filter, lat.field = "latitude", lon.field = "longitude",
+    agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id"
+  )
+  chpVMS_filter <- subset(chpVMS_filter, Id > 0)
+  chpVMS_filter <- chpVMS_filter |>
+    dplyr::group_by(vr_number, date) |>
+    dplyr::summarize(meanlat = mean(latitude, na.rm = TRUE), meanlon = mean(longitude, na.rm = TRUE)) # Available VMS data
+
+  if (nrow(observed_stillmissing) > 0) {
+    observed_stillmissing <- dplyr::left_join(observed_stillmissing |> mutate(date_fished=lubridate::dmy(date_fished)), as.data.frame(chpVMS_filter), by = (c("vr_number_fishing" = "vr_number", "date_fished" = "date")))
+    observed_stillmissing <- Mar.utils::identify_area(
+      df = observed_stillmissing, lat.field = "meanlat", lon.field = "meanlon",
+      agg.poly.shp = Mar.data::GeorgesBankDiscardZones_sf, agg.poly.field = "Id"
+    ) |>
+      dplyr::mutate(zone = Id, lon = meanlat, lat = meanlon) |>
+      dplyr::select(-meanlat, -meanlon)
+  } else {
+    observed_stillmissing <- observed_stillmissing
+  }
+
   # Bind observed and unobserved dataframes together and remove trips missing Zone
 
-  temp <- rbind(zone_correct, setNames(observed |> dplyr::select(c(1:23)), names(zone_correct)), setNames(unobserved |> dplyr::select(1:23), names(zone_correct)))
+  temp <- dplyr::bind_rows(zone_correct |> dplyr::mutate(date_fished=lubridate::dmy(date_fished)) |> dplyr::rename(trip=trip.marfis),
+                           observed |> dplyr::mutate(date_fished=lubridate::dmy(date_fished)) |> dplyr::select(c(1:22), zone) |> dplyr::filter(zone>0),
+                   observed_stillmissing |> dplyr::mutate(zone=as.character(zone)) |> dplyr::select(c(1:22, zone)),
+                   unobserved |> dplyr::mutate(landed_date=as.character(landed_date),
+                                               zone = as.character(zone)) |>
+                     dplyr::rename(trip=trip.marfis) |> dplyr::select(c(1:22, zone)))
 
   marfis <- temp |> dplyr::filter(zone >= 1)
   noZone <- temp |>
@@ -121,7 +162,7 @@ assign_zone <- function(marfis.df = NULL, isdb.df = NULL, y = year, lat.field = 
 
   df.list <- list(marfis, noZone)
 
-  Id <- date_fished <- landed_date <- lat <- lat.x <- latitude <- log_efrt_std_info_id <- lon <- lon.x <- lon.y <- longitude <- meanlat <- meanlon <- oracle.dsn <- oracle.password <- oracle.username <- position_utc_date <- setNames <- trip <- vr_number <- year <- zone <- NULL
+  Id <- date_fished <- landed_date <- lat <- lat.x <- latitude <- log_efrt_std_info_id <- lon <- lon.x <- lon.y <- longitude <- meanlat <- meanlon <- oracle.dsn <- oracle.password <- oracle.username <- position_utc_date <- setNames <- trip <- vr_number <- year <- zone <- trip.marfis <- NULL
 
   print(df.list)
 }
