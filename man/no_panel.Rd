@@ -31,6 +31,6 @@ Remove trips that did not use a separator panel
 }
 \examples{
 \dontrun{
-example1 <- nopanel(marfis.df=marfis)
+example1 <- nopanel(marfis.df = marfis)
 }
 }
