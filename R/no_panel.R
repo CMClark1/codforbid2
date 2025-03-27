@@ -13,6 +13,7 @@
 
 
 no_panel <- function(marfis.df = NULL, username = oracle.username, password = oracle.password, dsn = oracle.dsn, y = year) {
+
   channel <- ROracle::dbConnect(DBI::dbDriver("Oracle"), username = username, password = password, dsn)
 
   separator <- ROracle::dbGetQuery(channel, paste("select a.CFV, a.VESSEL_NAME, b.TRIP, b.LANDING_DATE, c.GEARCD_ID, d.GEARFCD_ID, Count(e.SET_NO)
