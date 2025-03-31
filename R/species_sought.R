@@ -46,43 +46,39 @@ group by a.CFV, a.VESSEL_NAME, b.TRIP, c.GEARCD_ID, b.LANDING_DATE, d.SPECSCD_ID
     tidyr::replace_na(list(cod = 0, had = 0, pol = 0)) |>
     dplyr::mutate(
       test = (cod / had) < 0.8,
-      test = ifelse(test == TRUE | is.na(test), "not cod directed", "cod directed")
+      test = ifelse(test == TRUE | is.na(test), "not cod directed", "cod directed"),
+      test2 = ifelse(test == "not cod directed", 0, 1)
     )
 
+  #Trips with all sets cod directed should have a mean of 1
   trips_cod_directed <- test1 |>
-    dplyr::filter(test == "cod directed") |>
-    dplyr::distinct(trip_id) |>
-    dplyr::pull(trip_id)
-  trips_not_cod_directed <- test1 |>
-    dplyr::filter(test == "not cod directed") |>
-    dplyr::distinct(trip_id) |>
-    dplyr::pull(trip_id)
+    dplyr::group_by(trip_id) |>
+    dplyr::summarise(mean_cod=mean(test2)) |>
+    dplyr::filter(mean_cod==1)
 
-  trips_both <- test1 |>
-    dplyr::distinct(trip_id) |>
-    dplyr::filter(trip_id %in% trips_cod_directed & trip_id %in% trips_not_cod_directed) # test again in next step
-  trips_onlycod <- test1 |>
-    dplyr::distinct(trip_id) |>
-    dplyr::filter(trip_id %in% trips_cod_directed & !trip_id %in% trips_not_cod_directed) # remove
-  trips_notcod <- test1 |>
-    dplyr::distinct(trip_id) |>
-    dplyr::filter(!trip_id %in% trips_cod_directed & trip_id %in% trips_not_cod_directed) # clean data
-
-  cod_directed1 <- test1 |>
-    dplyr::filter(trip_id %in% trips_onlycod$trip_id) |>
+  cod_directed1 <- marfis.df |>
+    dplyr::filter(trip_id%in%trips_cod_directed$trip_id) |>
     dplyr::mutate(comment = "All sets on the trip were cod directed (>0.8).")
 
   # Identify trips where sets at the end of the trip had a cod:had ratio greater than 0.8 (i.e. sought cod at the end of the trip). Sets with ratio >0.8 are cod directed on these trips.
 
+  #Trips with some sets cod directed should have a mean between 0 and 1
+  some_sets_cod_directed <- test1 |>
+    dplyr::group_by(trip_id) |>
+    dplyr::summarise(mean_cod=mean(test2)) |>
+    dplyr::filter(mean_cod>0 & mean_cod<1)
+
   last_set_cod_directed <- test1 |>
-    dplyr::filter(trip_id %in% trips_both$trip_id) |> # select only trips with both cod directed and not directed sets
+    dplyr::filter(trip_id%in%some_sets_cod_directed$trip_id) |>  # select only trips with both cod directed and not directed sets
     dplyr::group_by(trip_id) |>
     dplyr::slice_max(log_efrt_std_info_id) |> # filter for last set per trip
     dplyr::filter(test == "cod directed") # filter for cod directed sets
 
-  cod_directed2 <- test1 |>
-    dplyr::filter(trip_id %in% last_set_cod_directed$trip_id & test == "cod directed") |>
+  cod_directed2 <- marfis.df |>
+    dplyr::filter(log_efrt_std_info_id%in%last_set_cod_directed$log_efrt_std_info_id) |>
     dplyr::mutate(comment = "Last set(s) on trip were cod directed (>0.8).")
+
+  #Pollock directed
 
   # Identify sets where pollock landings are greater than combined cod and haddock landings (i.e. sought pollock)
 
@@ -90,12 +86,13 @@ group by a.CFV, a.VESSEL_NAME, b.TRIP, c.GEARCD_ID, b.LANDING_DATE, d.SPECSCD_ID
     tidyr::replace_na(list(cod = 0, had = 0, pol = 0)) |>
     dplyr::mutate(pol_ratio = pol > (cod + had)) |>
     dplyr::filter(pol_ratio == TRUE) |>
-    dplyr::mutate(comment = "Set was pollock directed (pol>(cod+had)).")
+    dplyr::mutate(comment = "Set was pollock directed (pol>(cod+had)).") |>
+    dplyr::ungroup()
 
   # Create two dataframes, one with removed records and one with kept records
 
   directed <- dplyr::bind_rows(tibble::lst(noncodhad, cod_directed1, cod_directed2, pollock_directed), .id = "id") |>
-    dplyr::select(1:26) |>
+    dplyr::select(1:23) |>
     dplyr::distinct_at(dplyr::vars(-1), .keep_all = TRUE)
 
   marfis <- marfis.df |> dplyr::filter(!log_efrt_std_info_id %in% directed$log_efrt_std_info_id)
